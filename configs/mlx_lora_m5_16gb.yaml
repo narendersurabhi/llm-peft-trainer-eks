@@ -1,0 +1,33 @@
+train:
+  backend: mlx
+  output_uri: outputs/mlx-dev
+  base_model: mlx-community/Llama-3.1-8B-Instruct-4bit
+  seed: 42
+  max_steps: 200
+  save_steps: 50
+  eval_steps: 50
+  learning_rate: 0.0002
+  max_seq_len: 512
+  micro_batch_size: 1
+  grad_accum_steps: 16
+  gradient_checkpointing: false
+  lora_r: 8
+  lora_alpha: 16
+  lora_dropout: 0.05
+  target_modules: [q_proj, k_proj, v_proj, o_proj]
+  use_qlora: false
+  use_deepspeed: false
+data:
+  train_uri: data/sample.jsonl
+  eval_uri: data/sample.jsonl
+  text_field: text
+  max_train_samples: 64
+  max_eval_samples: 16
+s3: {}
+mlflow:
+  tracking_uri: null
+  experiment: llm-peft-trainer-local
+runtime:
+  run_id: mlx-dev
+  docker_image: local
+  resume: true

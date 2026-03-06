@@ -1,0 +1,63 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: llm-train
+  namespace: argo
+spec:
+  entrypoint: train
+  arguments:
+    parameters:
+    - {name: image}
+    - {name: config_path}
+    - {name: run_id}
+    - {name: dataset_uri}
+    - {name: output_uri}
+    - {name: mlflow_uri}
+    - {name: backend}
+  templates:
+  - name: train
+    container:
+      image: "{{workflow.parameters.image}}"
+      command: ["python", "-m", "llm_peft_trainer.cli", "train", "--config", "{{workflow.parameters.config_path}}"]
+      env:
+      - {name: RUN_ID, value: "{{workflow.parameters.run_id}}"}
+      - {name: DATASET_URI, value: "{{workflow.parameters.dataset_uri}}"}
+      - {name: OUTPUT_URI, value: "{{workflow.parameters.output_uri}}"}
+      - {name: MLFLOW_TRACKING_URI, value: "{{workflow.parameters.mlflow_uri}}"}
+      resources:
+        limits:
+          nvidia.com/gpu: "1"
+    nodeSelector:
+      node.kubernetes.io/instance-type: g5.2xlarge
+    tolerations:
+    - key: nvidia.com/gpu
+      operator: Exists
+      effect: NoSchedule
+    - key: spot
+      operator: Exists
+      effect: NoSchedule
+---
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: llm-eval
+  namespace: argo
+spec:
+  entrypoint: eval
+  arguments:
+    parameters:
+    - {name: image}
+    - {name: config_path}
+    - {name: run_id}
+    - {name: dataset_uri}
+    - {name: output_uri}
+    - {name: mlflow_uri}
+    - {name: backend}
+  templates:
+  - name: eval
+    container:
+      image: "{{workflow.parameters.image}}"
+      command: ["python", "-m", "llm_peft_trainer.cli", "eval", "--config", "{{workflow.parameters.config_path}}"]
+      resources:
+        limits:
+          nvidia.com/gpu: "1"

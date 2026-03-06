@@ -1,0 +1,52 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: torch-rdzv
+  namespace: argo
+spec:
+  clusterIP: None
+  selector:
+    app: llm-train-worker
+  ports:
+  - name: rdzv
+    port: 29500
+    targetPort: 29500
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: llm-multinode-
+  namespace: argo
+spec:
+  entrypoint: launch
+  templates:
+  - name: launch
+    steps:
+    - - name: worker-0
+        template: worker
+        arguments: {parameters: [{name: rank, value: "0"}, {name: world_size, value: "2"}]}
+      - name: worker-1
+        template: worker
+        arguments: {parameters: [{name: rank, value: "1"}, {name: world_size, value: "2"}]}
+  - name: worker
+    inputs:
+      parameters:
+      - name: rank
+      - name: world_size
+    container:
+      image: ghcr.io/org/llm-peft-trainer:latest
+      command: ["bash", "-lc"]
+      args:
+      - >
+        torchrun --nnodes={{inputs.parameters.world_size}} --nproc_per_node=1
+        --node_rank={{inputs.parameters.rank}} --master_addr=torch-rdzv --master_port=29500
+        -m llm_peft_trainer.cli train --config configs/hf_lora_multinode.yaml
+      env:
+      - {name: MASTER_ADDR, value: torch-rdzv}
+      - {name: MASTER_PORT, value: "29500"}
+      - {name: RANK, value: "{{inputs.parameters.rank}}"}
+      - {name: WORLD_SIZE, value: "{{inputs.parameters.world_size}}"}
+      resources:
+        limits: {nvidia.com/gpu: "1"}
+    metadata:
+      labels: {app: llm-train-worker}

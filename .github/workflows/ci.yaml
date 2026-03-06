@@ -1,0 +1,28 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+    - name: Install
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .[dev]
+    - name: Ruff
+      run: ruff check .
+    - name: Mypy
+      run: mypy src
+    - name: Unit tests
+      run: pytest -q
+    - name: CPU smoke train
+      run: bash scripts/run_hf_local_cpu_smoke.sh
+    - name: Validate Argo YAML
+      run: python -c "import yaml, pathlib; [yaml.safe_load_all(pathlib.Path('k8s/argo/workflowtemplates.yaml').read_text())]"
