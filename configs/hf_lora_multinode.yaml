@@ -1,0 +1,33 @@
+train:
+  backend: hf
+  output_uri: outputs/hf-multinode
+  base_model: mistralai/Mistral-7B-Instruct-v0.2
+  max_steps: 1000
+  save_steps: 100
+  eval_steps: 100
+  learning_rate: 0.00015
+  max_seq_len: 1024
+  micro_batch_size: 1
+  grad_accum_steps: 32
+  gradient_checkpointing: true
+  lora_r: 16
+  lora_alpha: 32
+  target_modules: [q_proj, k_proj, v_proj, o_proj]
+  use_qlora: false
+  use_deepspeed: false
+  bf16: true
+  fp16: false
+data:
+  train_uri: s3://datasets/train.jsonl
+  eval_uri: s3://datasets/eval.jsonl
+  text_field: text
+s3:
+  endpoint_url: http://minio.mlops.svc.cluster.local:9000
+  bucket: llm-artifacts
+  prefix: llm-runs
+mlflow:
+  tracking_uri: http://mlflow.mlops.svc.cluster.local:5000
+  experiment: llm-peft-trainer
+runtime:
+  run_id: hf-multi
+  docker_image: ghcr.io/org/llm-peft-trainer:latest
